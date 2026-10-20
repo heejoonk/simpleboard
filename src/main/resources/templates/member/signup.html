@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/fragments :: head('회원가입')}"></head>
+<body>
+<header th:replace="~{layout/fragments :: header}"></header>
+<main class="container board-container">
+    <div class="mx-auto" style="max-width: 420px;">
+        <h2 class="mb-4">회원가입</h2>
+        <form th:action="@{/signup}" th:object="${signupRequest}" method="post" novalidate>
+            <div class="mb-3">
+                <label for="email" class="form-label">이메일</label>
+                <input type="email" th:field="*{email}" class="form-control" th:errorclass="is-invalid">
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('email')}"
+                     th:text="${#fields.errors('email')[0]}"></div>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">비밀번호</label>
+                <input type="password" id="password" name="password" class="form-control"
+                       th:classappend="${#fields.hasErrors('password')} ? 'is-invalid'">
+                <div class="form-text">영문과 숫자를 포함해 8~20자</div>
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('password')}"
+                     th:text="${#fields.errors('password')[0]}"></div>
+            </div>
+            <div class="mb-3">
+                <label for="passwordConfirm" class="form-label">비밀번호 확인</label>
+                <input type="password" id="passwordConfirm" name="passwordConfirm" class="form-control"
+                       th:classappend="${#fields.hasErrors('passwordConfirm')} ? 'is-invalid'">
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('passwordConfirm')}"
+                     th:text="${#fields.errors('passwordConfirm')[0]}"></div>
+            </div>
+            <div class="mb-4">
+                <label for="nickname" class="form-label">닉네임</label>
+                <input type="text" th:field="*{nickname}" class="form-control" th:errorclass="is-invalid">
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('nickname')}"
+                     th:text="${#fields.errors('nickname')[0]}"></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">가입하기</button>
+        </form>
+        <p class="text-center mt-3 small">
+            이미 계정이 있나요? <a th:href="@{/login}">로그인</a>
+        </p>
+    </div>
+</main>
+<footer th:replace="~{layout/fragments :: footer}"></footer>
+</body>
+</html>

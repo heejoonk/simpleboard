@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/fragments :: head(${post.title})}"></head>
+<body>
+<header th:replace="~{layout/fragments :: header}"></header>
+<main class="container board-container">
+    <div class="alert alert-danger" th:if="${errorMessage != null}" th:text="${errorMessage}">댓글 오류</div>
+
+    <article class="border rounded p-3 mb-4">
+        <h3 th:text="${post.title}">첫 글입니다</h3>
+        <div class="text-muted small">
+            <span th:text="${post.writerNickname}">홍길동</span> ·
+            <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">2026-10-20 14:30</span> ·
+            조회 <span th:text="${post.viewCount}">25</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-1">
+            <span class="text-muted small" th:if="${post.edited}"
+                  th:text="|(수정됨 ${#temporals.format(post.updatedAt, 'yyyy-MM-dd HH:mm')})|">(수정됨)</span>
+            <span th:unless="${post.edited}"></span>
+            <div th:if="${post.owner}" class="d-flex gap-1">
+                <a th:href="@{/posts/{id}/edit(id=${post.id})}" class="btn btn-sm btn-outline-primary">수정</a>
+                <form th:action="@{/posts/{id}/delete(id=${post.id})}" method="post" class="m-0"
+                      onsubmit="return confirm('삭제하시겠습니까?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+                </form>
+            </div>
+        </div>
+        <hr>
+        <div class="pre-wrap" th:text="${post.content}">본문 내용</div>
+    </article>
+
+    <section>
+        <h5>댓글 <span th:text="${comments.size()}">3</span></h5>
+        <ul class="list-group mb-3">
+            <li class="list-group-item" th:each="comment : ${comments}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="small text-muted">
+                        <strong class="text-dark" th:text="${comment.writerNickname}">김철수</strong> ·
+                        <span th:text="${#temporals.format(comment.createdAt, 'MM-dd HH:mm')}">10-20 14:40</span>
+                    </div>
+                    <form th:if="${comment.owner}" method="post" class="m-0"
+                          th:action="@{/posts/{postId}/comments/{commentId}/delete(postId=${post.id}, commentId=${comment.id})}"
+                          onsubmit="return confirm('삭제하시겠습니까?');">
+                        <button type="submit" class="btn btn-sm btn-link text-danger p-0">삭제</button>
+                    </form>
+                </div>
+                <div class="pre-wrap mt-1" th:text="${comment.content}">좋은 글이네요</div>
+            </li>
+        </ul>
+
+        <form th:if="${loginMember != null}" th:action="@{/posts/{id}/comments(id=${post.id})}"
+              th:object="${commentForm}" method="post" class="d-flex gap-2 mb-3">
+            <textarea th:field="*{content}" class="form-control" rows="2" maxlength="500"
+                      placeholder="댓글을 입력하세요"></textarea>
+            <button type="submit" class="btn btn-primary text-nowrap">등록</button>
+        </form>
+        <p th:if="${loginMember == null}" class="text-muted">
+            로그인 후 댓글을 작성할 수 있습니다.
+            <a th:href="@{/login(redirectURL=|/posts/${post.id}|)}">로그인</a>
+        </p>
+    </section>
+
+    <a th:href="@{/posts}" class="btn btn-outline-secondary">목록으로</a>
+</main>
+<footer th:replace="~{layout/fragments :: footer}"></footer>
+</body>
+</html>

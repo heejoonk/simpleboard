@@ -1,0 +1,91 @@
+# 데이터 모델 (ERD)
+
+실제 DDL은 docs/06-schema.sql 이 기준이다. 이 문서와 다르면 schema.sql을 따른다.
+
+## DB 환경
+- MySQL 8.x (로컬, localhost:3306)
+- 데이터베이스: simpleboard (테스트용: simpleboard_test)
+- 문자셋: utf8mb4 / utf8mb4_unicode_ci
+- 엔진: InnoDB
+- 시간대: Asia/Seoul
+
+## 공통 규칙
+- 테이블/컬럼명은 snake_case, Java 필드명은 camelCase (RowMapper에서 직접 매핑)
+- PK는 BIGINT AUTO_INCREMENT
+- created_at: DEFAULT CURRENT_TIMESTAMP (DB가 채움)
+- updated_at: DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP (DB가 갱신)
+  단, 조회수 증가 UPDATE에서는 updated_at이 바뀌지 않도록 SQL에서 updated_at = updated_at 를 함께 지정한다
+- 삭제는 물리 삭제 (soft delete 사용 안 함)
+
+## 관계
+member 1 ---- N post      (회원은 여러 글을 쓴다)
+member 1 ---- N comment   (회원은 여러 댓글을 쓴다)
+post   1 ---- N comment   (글은 여러 댓글을 가진다, 글 삭제 시 댓글도 삭제)
+
+## 테이블 상세
+
+### member (회원)
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| email | VARCHAR(100) | NOT NULL, UNIQUE | 로그인 ID |
+| password | VARCHAR(100) | NOT NULL | BCrypt 해시 (60자) |
+| nickname | VARCHAR(10) | NOT NULL, UNIQUE | 화면 표시명 |
+| role | VARCHAR(20) | NOT NULL, DEFAULT 'USER' | USER (추후 ADMIN용, 현재 권한 체크에는 사용 안 함) |
+| created_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 가입일 |
+| updated_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | |
+
+### post (게시글)
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| member_id | BIGINT | NOT NULL, FK → member.id | 작성자 |
+| title | VARCHAR(100) | NOT NULL | |
+| content | TEXT | NOT NULL | 최대 5000자 (애플리케이션 검증) |
+| view_count | INT | NOT NULL, DEFAULT 0 | 조회수 |
+| created_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 작성일 |
+| updated_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | 수정일 |
+
+인덱스: idx_post_member_id (member_id)
+
+### comment (댓글)
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| post_id | BIGINT | NOT NULL, FK → post.id ON DELETE CASCADE | 소속 게시글 |
+| member_id | BIGINT | NOT NULL, FK → member.id | 작성자 |
+| content | VARCHAR(500) | NOT NULL | |
+| created_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
+| updated_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | |
+
+인덱스: idx_comment_post_id (post_id), idx_comment_member_id (member_id)
+
+## Java 도메인 클래스 (JPA Entity 아님, 단순 객체)
+- Member   { Long id; String email; String password; String nickname; String role; LocalDateTime createdAt; LocalDateTime updatedAt; }
+- Post     { Long id; Long memberId; String title; String content; int viewCount; LocalDateTime createdAt; LocalDateTime updatedAt; }
+- Comment  { Long id; Long postId; Long memberId; String content; LocalDateTime createdAt; LocalDateTime updatedAt; }
+
+화면용으로 JOIN 결과가 필요한 경우(작성자 닉네임, 댓글 수 등)는 도메인 클래스를 늘리지 말고
+조회 전용 DTO(PostListResponse, PostDetailResponse, CommentResponse)로 바로 매핑한다.
+
+## 주요 SQL 패턴 (참고)
+목록 (F-03)
+  SELECT p.id, p.title, p.view_count, p.created_at, m.nickname AS writer_nickname,
+         (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id) AS comment_count
+  FROM post p JOIN member m ON p.member_id = m.id
+  ORDER BY p.id DESC
+  LIMIT :size OFFSET :offset
+
+상세 (F-04)
+  SELECT p.*, m.nickname AS writer_nickname
+  FROM post p JOIN member m ON p.member_id = m.id
+  WHERE p.id = :id
+
+조회수 증가 (F-04)
+  UPDATE post SET view_count = view_count + 1, updated_at = updated_at WHERE id = :id
+
+댓글 목록 (F-04)
+  SELECT c.id, c.content, c.member_id, c.created_at, m.nickname AS writer_nickname
+  FROM comment c JOIN member m ON c.member_id = m.id
+  WHERE c.post_id = :postId
+  ORDER BY c.id ASC

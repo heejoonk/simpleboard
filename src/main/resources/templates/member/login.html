@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/fragments :: head('로그인')}"></head>
+<body>
+<header th:replace="~{layout/fragments :: header}"></header>
+<main class="container board-container">
+    <div class="mx-auto" style="max-width: 420px;">
+        <h2 class="mb-4">로그인</h2>
+        <form th:action="@{/login}" th:object="${loginForm}" method="post" novalidate>
+            <div class="alert alert-danger" th:if="${#fields.hasGlobalErrors()}"
+                 th:text="${#fields.globalErrors()[0]}"></div>
+            <div class="alert alert-success" th:if="${!#fields.hasGlobalErrors() and param.joined != null}">
+                가입이 완료되었습니다. 로그인해주세요
+            </div>
+            <div class="alert alert-warning"
+                 th:if="${!#fields.hasGlobalErrors() and param.joined == null and !#strings.isEmpty(loginForm.redirectURL)}">
+                로그인이 필요한 페이지입니다
+            </div>
+
+            <input type="hidden" th:field="*{redirectURL}">
+            <div class="mb-3">
+                <label for="email" class="form-label">이메일</label>
+                <input type="email" th:field="*{email}" class="form-control" th:errorclass="is-invalid">
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('email')}"
+                     th:text="${#fields.errors('email')[0]}"></div>
+            </div>
+            <div class="mb-4">
+                <label for="password" class="form-label">비밀번호</label>
+                <input type="password" id="password" name="password" class="form-control"
+                       th:classappend="${#fields.hasErrors('password')} ? 'is-invalid'">
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('password')}"
+                     th:text="${#fields.errors('password')[0]}"></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">로그인</button>
+        </form>
+        <p class="text-center mt-3 small">
+            계정이 없나요? <a th:href="@{/signup}">회원가입</a>
+        </p>
+    </div>
+</main>
+<footer th:replace="~{layout/fragments :: footer}"></footer>
+</body>
+</html>

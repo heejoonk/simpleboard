@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: board
+  datasource:
+    url: jdbc:mysql://localhost:3306/simpleboard_test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: adminuser
+  sql:
+    init:
+      mode: always          # 시작 시 schema.sql 실행 (CREATE TABLE IF NOT EXISTS)
+server:
+  servlet:
+    session:
+      timeout: 30m
+      tracking-modes: cookie   # URL에 ;jsessionid 붙지 않게
+      cookie:
+        http-only: true
+        same-site: lax         # CSRF 완화 (Spring Security CSRF 토큰 대신)

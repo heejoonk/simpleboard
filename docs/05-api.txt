@@ -1,0 +1,135 @@
+# URL / API 명세
+
+이 프로젝트는 Thymeleaf 서버 렌더링 방식이다.
+GET은 화면(HTML)을 반환하고, POST는 폼 처리 후 redirect 한다 (PRG 패턴).
+단, 입력값 검증 실패 시에는 redirect 하지 않고 같은 폼을 다시 렌더링한다.
+Spring Security를 쓰지 않으므로 CSRF 토큰은 없다.
+대신 상태를 바꾸는 요청(등록/수정/삭제/로그아웃)은 모두 POST로만 받고, 세션 쿠키는 SameSite=Lax로 설정한다.
+GET 요청으로는 어떤 데이터도 변경하지 않는다. (예외: 상세 조회 시 조회수 +1)
+
+## 권한 표기
+ALL: 누구나 / GUEST: 비로그인만 / USER: 로그인 필요 / OWNER: 작성자 본인
+
+## 엔드포인트 요약
+| ID | 메서드 | URL | 권한 | 설명 | 성공 시 | 기능 |
+|---|---|---|---|---|---|---|
+| A-01 | GET | /signup | GUEST | 회원가입 폼 | S-02 | F-01 |
+| A-02 | POST | /signup | GUEST | 회원가입 처리 | redirect /login?joined | F-01 |
+| A-03 | GET | /login?redirectURL= | GUEST | 로그인 폼 | S-03 | F-02 |
+| A-04 | POST | /login | GUEST | 로그인 처리 (LoginController) | redirect redirectURL or / | F-02 |
+| A-05 | POST | /logout | USER | 로그아웃 (session.invalidate) | redirect / | F-02 |
+| A-06 | GET | /, /posts?page=0 | ALL | 게시글 목록 | S-01 | F-03 |
+| A-07 | GET | /posts/{id} | ALL | 게시글 상세 | S-04 | F-04 |
+| A-08 | GET | /posts/new | USER | 작성 폼 | S-05 | F-05 |
+| A-09 | POST | /posts | USER | 게시글 등록 | redirect /posts/{id} | F-05 |
+| A-10 | GET | /posts/{id}/edit | OWNER | 수정 폼 | S-06 | F-06 |
+| A-11 | POST | /posts/{id}/edit | OWNER | 게시글 수정 | redirect /posts/{id} | F-06 |
+| A-12 | POST | /posts/{id}/delete | OWNER | 게시글 삭제 | redirect /posts | F-07 |
+| A-13 | POST | /posts/{postId}/comments | USER | 댓글 등록 | redirect /posts/{postId} | F-08 |
+| A-14 | POST | /posts/{postId}/comments/{commentId}/delete | OWNER | 댓글 삭제 | redirect /posts/{postId} | F-09 |
+
+## 로그인 체크 (LoginCheckInterceptor, WebConfig에서 등록)
+등록: addPathPatterns("/**")
+제외: excludePathPatterns("/signup", "/login", "/css/**", "/js/**", "/images/**", "/favicon.ico", "/error")
+
+추가로 인터셉터 안에서 아래 "GET 공개 경로"는 통과시킨다.
+(같은 /posts 라도 GET 목록은 공개, POST 등록은 로그인 필요이므로 메서드까지 함께 판단)
+| 메서드 | 경로 | 로그인 필요 |
+|---|---|---|
+| GET | / | X |
+| GET | /posts | X |
+| GET | /posts/{숫자} | X |
+| GET | /posts/new, /posts/{id}/edit | O |
+| POST | 모든 POST (/logout, /posts, /posts/{id}/edit, /delete, /comments ...) | O |
+
+비로그인 시 동작
+- GET 요청: redirect /login?redirectURL={URL 인코딩된 원래 URI + 쿼리스트링}
+- 그 외(POST): redirect /login
+- 작성자 본인 여부(OWNER)는 인터셉터가 아니라 Service에서 검사한다
+
+------------------------------------------------------------
+
+## 상세
+
+### A-02 POST /signup
+요청 (form) → DTO: SignupRequest
+| 필드 | 필수 | 규칙 |
+|---|---|---|
+| email | O | 이메일 형식, 최대 100자 |
+| password | O | 8~20자, 영문+숫자 |
+| passwordConfirm | O | password와 일치 |
+| nickname | O | 2~10자 |
+
+실패 시: 같은 폼(S-02)을 다시 렌더링하고 필드별 오류 표시
+- 이메일 중복: email 필드 오류 "이미 사용 중인 이메일입니다"
+- 닉네임 중복: nickname 필드 오류 "이미 사용 중인 닉네임입니다"
+- 비밀번호 불일치: passwordConfirm 필드 오류 "비밀번호가 일치하지 않습니다"
+
+### A-03 GET /login
+- 이미 로그인 상태면 redirect /
+- Model: loginForm (redirectURL 쿼리 파라미터 값을 loginForm.redirectURL에 담음)
+
+### A-04 POST /login
+요청 (form) → DTO: LoginForm
+| 필드 | 필수 | 규칙 |
+|---|---|---|
+| email | O | 빈 값 불가 |
+| password | O | 빈 값 불가 |
+| redirectURL | X | 숨은 필드. "/"로 시작하고 "//"로 시작하지 않을 때만 사용 |
+
+성공 시
+1) request.changeSessionId()
+2) session.setAttribute(SessionConst.LOGIN_MEMBER, new LoginMember(id, email, nickname))
+3) redirect {안전한 redirectURL} 또는 /
+
+실패 시: 같은 폼(S-03) 재렌더링, 이메일 값 유지, 비밀번호는 비움
+         글로벌 오류(bindingResult.reject) "이메일 또는 비밀번호가 올바르지 않습니다"
+
+### A-05 POST /logout
+- request.getSession(false) 가 있으면 invalidate() → redirect /
+
+### A-06 GET /posts
+쿼리 파라미터
+| 파라미터 | 기본값 | 설명 |
+|---|---|---|
+| page | 0 | 0부터 시작, 음수면 0으로 처리 |
+
+Model 속성
+  page : PageResult<PostListResponse>
+  PageResult<T>      { List<T> content; int page; int size; long totalElements; int totalPages; boolean hasPrevious; boolean hasNext; }
+  PostListResponse   { Long id; String title; String writerNickname; int commentCount; int viewCount; LocalDateTime createdAt; }
+
+(JPA를 쓰지 않으므로 Spring Data의 Page 대신 직접 만든 PageResult를 사용한다)
+
+### A-07 GET /posts/{id}
+Model 속성
+  post        : PostDetailResponse { Long id; String title; String content; Long writerId; String writerNickname;
+                                     int viewCount; LocalDateTime createdAt; LocalDateTime updatedAt; boolean owner; boolean edited; }
+  comments    : List<CommentResponse> { Long id; String content; Long writerId; String writerNickname; LocalDateTime createdAt; boolean owner; }
+  commentForm : CommentForm
+실패 시: 글이 없으면 404 (E-01)
+
+### A-09 POST /posts · A-11 POST /posts/{id}/edit
+요청 (form) → DTO: PostForm
+| 필드 | 필수 | 규칙 |
+|---|---|---|
+| title | O | 공백만 불가, 1~100자 |
+| content | O | 공백만 불가, 1~5000자 |
+
+실패 시: 같은 폼(S-05/S-06) 재렌더링, 필드별 오류 표시
+권한 실패(A-10, A-11): 작성자가 아니면 403 (E-01)
+
+### A-13 POST /posts/{postId}/comments
+요청 (form) → DTO: CommentForm { content: 필수, 공백만 불가, 1~500자 }
+실패 시: redirect /posts/{postId} + flash 메시지 "댓글은 1~500자로 입력해주세요"
+
+------------------------------------------------------------
+
+## 공통 에러 처리 (GlobalExceptionHandler, @ControllerAdvice)
+| 상황 | 예외 | HTTP | 화면 |
+|---|---|---|---|
+| 리소스 없음 | NotFoundException | 404 | error/404 |
+| 권한 없음 (작성자 아님) | ForbiddenException | 403 | error/403 |
+| 로그인 필요 | LoginCheckInterceptor | 302 → /login?redirectURL=... | S-03 |
+| DB 오류 | DataAccessException | 500 | error/500 (로그는 서버에 남김) |
+| 기타 서버 오류 | Exception | 500 | error/500 |

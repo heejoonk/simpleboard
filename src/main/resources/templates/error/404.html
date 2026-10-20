@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/fragments :: head('페이지 없음')}"></head>
+<body>
+<header th:replace="~{layout/fragments :: header}"></header>
+<main class="container board-container text-center py-5">
+    <h1 class="display-6">404</h1>
+    <p class="lead">요청한 페이지를 찾을 수 없습니다</p>
+    <a th:href="@{/}" class="btn btn-primary">홈으로</a>
+</main>
+<footer th:replace="~{layout/fragments :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/fragments :: head('게시판')}"></head>
+<body>
+<header th:replace="~{layout/fragments :: header}"></header>
+<main class="container board-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0">게시판</h2>
+        <a th:if="${loginMember != null}" th:href="@{/posts/new}" class="btn btn-primary">글쓰기</a>
+    </div>
+
+    <p th:if="${page.content.isEmpty()}" class="text-center text-muted py-5 border rounded">등록된 글이 없습니다</p>
+
+    <div th:unless="${page.content.isEmpty()}" class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th class="text-center" style="width: 70px;">번호</th>
+                <th>제목</th>
+                <th class="text-center" style="width: 110px;">작성자</th>
+                <th class="text-center" style="width: 110px;">작성일</th>
+                <th class="text-center" style="width: 60px;">조회</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="post : ${page.content}">
+                <td class="text-center" th:text="${post.id}">12</td>
+                <td>
+                    <a th:href="@{/posts/{id}(id=${post.id})}" th:text="${post.title}"
+                       class="text-decoration-none">첫 글입니다</a>
+                    <span th:if="${post.commentCount > 0}" class="text-primary small"
+                          th:text="|[${post.commentCount}]|">[3]</span>
+                </td>
+                <td class="text-center" th:text="${post.writerNickname}">홍길동</td>
+                <td class="text-center" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd')}">2026-10-20</td>
+                <td class="text-center" th:text="${post.viewCount}">25</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <nav th:if="${page.totalPages > 0}">
+        <ul class="pagination justify-content-center">
+            <li class="page-item" th:classappend="${!page.hasPrevious} ? 'disabled'">
+                <a class="page-link" th:href="@{/posts(page=${page.page - 1})}">이전</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(page.blockStart(), page.blockEnd())}"
+                th:classappend="${i == page.page} ? 'active'">
+                <a class="page-link" th:href="@{/posts(page=${i})}" th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${!page.hasNext} ? 'disabled'">
+                <a class="page-link" th:href="@{/posts(page=${page.page + 1})}">다음</a>
+            </li>
+        </ul>
+    </nav>
+</main>
+<footer th:replace="~{layout/fragments :: footer}"></footer>
+</body>
+</html>
