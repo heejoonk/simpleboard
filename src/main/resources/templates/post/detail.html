@@ -27,6 +27,24 @@
         </div>
         <hr>
         <div class="pre-wrap" th:text="${post.content}">본문 내용</div>
+
+        <div class="border-top mt-3 pt-3" th:if="${attachment != null}"
+             th:with="downloadUrl=@{/posts/{postId}/files/{fileId}(postId=${post.id}, fileId=${attachment.id})}">
+            <div th:if="${attachment.image and loginMember != null}" class="mb-2">
+                <a th:href="${downloadUrl}">
+                    <img th:src="@{/posts/{postId}/files/{fileId}/preview(postId=${post.id}, fileId=${attachment.id})}"
+                         th:alt="${attachment.originalName}" class="img-fluid rounded border attachment-preview">
+                </a>
+            </div>
+            <div class="small">
+                첨부 파일:
+                <a th:href="${downloadUrl}" th:text="${attachment.originalName}">sample.pdf</a>
+                <span class="text-muted" th:text="|(${attachment.displaySize()})|">(1.2 MB)</span>
+                <span class="text-muted" th:if="${loginMember == null}">
+                    · 로그인 후 <span th:text="${attachment.image} ? '미리보기와 다운로드를' : '다운로드를'"></span> 할 수 있습니다
+                </span>
+            </div>
+        </div>
     </article>
 
     <section>

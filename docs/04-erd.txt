@@ -21,6 +21,7 @@
 member 1 ---- N post      (회원은 여러 글을 쓴다)
 member 1 ---- N comment   (회원은 여러 댓글을 쓴다)
 post   1 ---- N comment   (글은 여러 댓글을 가진다, 글 삭제 시 댓글도 삭제)
+post   1 ---- 0..1 post_file (글당 첨부 파일 최대 1개, 글 삭제 시 첨부도 삭제)
 
 ## 테이블 상세
 
@@ -60,13 +61,28 @@ post   1 ---- N comment   (글은 여러 댓글을 가진다, 글 삭제 시 댓
 
 인덱스: idx_comment_post_id (post_id), idx_comment_member_id (member_id)
 
+### post_file (게시글 첨부 파일, F-10)
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| post_id | BIGINT | NOT NULL, UNIQUE, FK → post.id ON DELETE CASCADE | 소속 게시글 (글당 1개) |
+| original_name | VARCHAR(255) | NOT NULL | 사용자가 올린 파일명 (화면 표시, 다운로드 파일명) |
+| stored_name | VARCHAR(100) | NOT NULL, UNIQUE | 디스크 저장명 (UUID + 확장자), 화면에 노출하지 않음 |
+| file_size | BIGINT | NOT NULL | 바이트 |
+| created_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
+
+인덱스: uk_post_file_post_id (post_id), uk_post_file_stored_name (stored_name)
+실제 파일은 application.yaml 의 file.upload-dir 폴더에 저장한다 (git 제외).
+파일 형식은 저장된 확장자로 판단하므로 content_type 컬럼은 두지 않는다.
+
 ## Java 도메인 클래스 (JPA Entity 아님, 단순 객체)
 - Member   { Long id; String email; String password; String nickname; String role; LocalDateTime createdAt; LocalDateTime updatedAt; }
 - Post     { Long id; Long memberId; String title; String content; int viewCount; LocalDateTime createdAt; LocalDateTime updatedAt; }
 - Comment  { Long id; Long postId; Long memberId; String content; LocalDateTime createdAt; LocalDateTime updatedAt; }
+- PostFile { Long id; Long postId; String originalName; String storedName; long fileSize; LocalDateTime createdAt; }
 
 화면용으로 JOIN 결과가 필요한 경우(작성자 닉네임, 댓글 수 등)는 도메인 클래스를 늘리지 말고
-조회 전용 DTO(PostListResponse, PostDetailResponse, CommentResponse)로 바로 매핑한다.
+조회 전용 DTO(PostListResponse, PostDetailResponse, CommentResponse, PostFileResponse)로 바로 매핑한다.
 
 ## 주요 SQL 패턴 (참고)
 목록 (F-03)
@@ -89,3 +105,9 @@ post   1 ---- N comment   (글은 여러 댓글을 가진다, 글 삭제 시 댓
   FROM comment c JOIN member m ON c.member_id = m.id
   WHERE c.post_id = :postId
   ORDER BY c.id ASC
+
+첨부 파일 (F-10)
+  SELECT id, post_id, original_name, stored_name, file_size, created_at
+  FROM post_file WHERE post_id = :postId                     -- 상세/수정 화면
+  ... WHERE id = :id AND post_id = :postId                   -- 다운로드 (다른 글의 파일이면 0건 → 404)
+  DELETE FROM post_file WHERE id = :id                       -- 수정 시 교체/삭제

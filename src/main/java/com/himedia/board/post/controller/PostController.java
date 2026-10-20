@@ -38,6 +38,7 @@ public class PostController {
 			@SessionAttribute(name = SessionConst.LOGIN_MEMBER, required = false) LoginMember loginMember,
 			Model model) {
 		model.addAttribute("post", postService.getDetail(id, loginMember));
+		model.addAttribute("attachment", postService.getAttachment(id).orElse(null));
 		model.addAttribute("comments", commentService.getComments(id, loginMember));
 		model.addAttribute("commentForm", new CommentForm());
 		return "post/detail";
@@ -64,7 +65,7 @@ public class PostController {
 			@SessionAttribute(name = SessionConst.LOGIN_MEMBER) LoginMember loginMember,
 			Model model) {
 		model.addAttribute("postForm", postService.getEditForm(id, loginMember));
-		model.addAttribute("postId", id);
+		addEditAttributes(id, model);
 		return FORM_VIEW;
 	}
 
@@ -75,7 +76,7 @@ public class PostController {
 			Model model) {
 		if (bindingResult.hasErrors()) {
 			postService.getEditForm(id, loginMember); // 폼을 다시 보여주기 전에 존재/권한 확인 (404, 403)
-			model.addAttribute("postId", id);
+			addEditAttributes(id, model);
 			return FORM_VIEW;
 		}
 		postService.update(id, loginMember, postForm);
@@ -87,5 +88,10 @@ public class PostController {
 			@SessionAttribute(name = SessionConst.LOGIN_MEMBER) LoginMember loginMember) {
 		postService.delete(id, loginMember);
 		return "redirect:/posts";
+	}
+
+	private void addEditAttributes(Long id, Model model) {
+		model.addAttribute("postId", id);
+		model.addAttribute("attachment", postService.getAttachment(id).orElse(null));
 	}
 }

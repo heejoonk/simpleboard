@@ -5,6 +5,7 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 /src/main/resources/application.yaml
+/src/test/resources/application.yaml.example
 
 ### STS ###
 .apt_generated
@@ -40,3 +41,6 @@ out/
 ### DB 계정 정보 포함 (별도 배포, .example 견본만 커밋) ###
 src/main/resources/application.yaml
 src/test/resources/application.yaml
+
+### 첨부 파일 업로드 경로 ###
+/uploads/

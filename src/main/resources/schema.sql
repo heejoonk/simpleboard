@@ -37,3 +37,16 @@ CREATE TABLE IF NOT EXISTS comment (
     CONSTRAINT fk_comment_post   FOREIGN KEY (post_id)   REFERENCES post (id) ON DELETE CASCADE,
     CONSTRAINT fk_comment_member FOREIGN KEY (member_id) REFERENCES member (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS post_file (
+    id             BIGINT       NOT NULL AUTO_INCREMENT,
+    post_id        BIGINT       NOT NULL,
+    original_name  VARCHAR(255) NOT NULL,
+    stored_name    VARCHAR(100) NOT NULL,
+    file_size      BIGINT       NOT NULL,
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_post_file_post_id (post_id),
+    UNIQUE KEY uk_post_file_stored_name (stored_name),
+    CONSTRAINT fk_post_file_post FOREIGN KEY (post_id) REFERENCES post (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -5,7 +5,7 @@
 <header th:replace="~{layout/fragments :: header}"></header>
 <main class="container board-container" th:with="editMode=${postId != null}">
     <h2 class="mb-4" th:text="${editMode} ? '글 수정' : '글쓰기'">글쓰기</h2>
-    <form th:object="${postForm}" method="post" novalidate
+    <form th:object="${postForm}" method="post" enctype="multipart/form-data" novalidate
           th:action="${editMode} ? @{/posts/{id}/edit(id=${postId})} : @{/posts}">
         <div class="mb-3">
             <label for="title" class="form-label">제목</label>
@@ -19,6 +19,28 @@
                       th:errorclass="is-invalid"></textarea>
             <div class="text-danger small mt-1" th:if="${#fields.hasErrors('content')}"
                  th:text="${#fields.errors('content')[0]}"></div>
+        </div>
+        <div class="mb-3">
+            <label for="file" class="form-label">첨부 파일</label>
+            <div class="form-check mb-2" th:if="${attachment != null}">
+                <input type="checkbox" th:field="*{deleteFile}" class="form-check-input">
+                <label class="form-check-label" th:for="${#ids.prev('deleteFile')}">
+                    기존 파일 삭제: <span th:text="${attachment.originalName}">sample.pdf</span>
+                    (<span th:text="${attachment.displaySize()}">1.2 MB</span>)
+                </label>
+            </div>
+            <input type="file" id="file" name="file" class="form-control"
+                   th:classappend="${#fields.hasErrors('file')} ? 'is-invalid'"
+                   accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.zip,.hwp,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+            <div class="form-text">
+                1개, 10MB 이하 (이미지: jpg, jpeg, png, gif, webp / 문서: pdf, txt, zip, hwp, doc, docx, xls, xlsx, ppt, pptx)
+                <span th:if="${attachment != null}"><br>새 파일을 선택하면 기존 파일은 교체됩니다.</span>
+            </div>
+            <div class="text-danger small mt-1" th:if="${#fields.hasErrors('file')}"
+                 th:text="${#fields.errors('file')[0]}"></div>
+            <div class="text-muted small mt-1" th:if="${#fields.hasAnyErrors() and !#fields.hasErrors('file')}">
+                입력 오류가 있으면 첨부 파일을 다시 선택해주세요.
+            </div>
         </div>
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary" th:text="${editMode} ? '수정' : '등록'">등록</button>

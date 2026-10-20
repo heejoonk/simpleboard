@@ -27,6 +27,8 @@ ALL: 누구나 / GUEST: 비로그인만 / USER: 로그인 필요 / OWNER: 작성
 | A-12 | POST | /posts/{id}/delete | OWNER | 게시글 삭제 | redirect /posts | F-07 |
 | A-13 | POST | /posts/{postId}/comments | USER | 댓글 등록 | redirect /posts/{postId} | F-08 |
 | A-14 | POST | /posts/{postId}/comments/{commentId}/delete | OWNER | 댓글 삭제 | redirect /posts/{postId} | F-09 |
+| A-15 | GET | /posts/{postId}/files/{fileId} | USER | 첨부 파일 다운로드 (attachment) | 파일 | F-10 |
+| A-16 | GET | /posts/{postId}/files/{fileId}/preview | USER | 이미지 미리보기 (inline, 이미지만) | 이미지 | F-10 |
 
 ## 로그인 체크 (LoginCheckInterceptor, WebConfig에서 등록)
 등록: addPathPatterns("/**")
@@ -40,6 +42,7 @@ ALL: 누구나 / GUEST: 비로그인만 / USER: 로그인 필요 / OWNER: 작성
 | GET | /posts | X |
 | GET | /posts/{숫자} | X |
 | GET | /posts/new, /posts/{id}/edit | O |
+| GET | /posts/{id}/files/{fileId}, .../preview | O (F-10, 공개 경로에 넣지 않음) |
 | POST | 모든 POST (/logout, /posts, /posts/{id}/edit, /delete, /comments ...) | O |
 
 비로그인 시 동작
@@ -107,6 +110,7 @@ Model 속성
                                      int viewCount; LocalDateTime createdAt; LocalDateTime updatedAt; boolean owner; boolean edited; }
   comments    : List<CommentResponse> { Long id; String content; Long writerId; String writerNickname; LocalDateTime createdAt; boolean owner; }
   commentForm : CommentForm
+  attachment  : PostFileResponse { Long id; Long postId; String originalName; long fileSize; boolean image; } (없으면 null, F-10)
 실패 시: 글이 없으면 404 (E-01)
 
 ### A-09 POST /posts · A-11 POST /posts/{id}/edit
@@ -115,7 +119,11 @@ Model 속성
 |---|---|---|
 | title | O | 공백만 불가, 1~100자 |
 | content | O | 공백만 불가, 1~5000자 |
+| file | X | MultipartFile, 1개, 10MB 이하, 허용 확장자만 (F-10) |
+| deleteFile | X | 수정 시 기존 첨부 삭제 체크 (F-10) |
 
+요청은 multipart/form-data. 수정 시 새 파일을 올리면 기존 첨부를 교체한다.
+A-10 수정 폼 Model: postForm, postId, attachment (PostFileResponse 또는 null)
 실패 시: 같은 폼(S-05/S-06) 재렌더링, 필드별 오류 표시
 권한 실패(A-10, A-11): 작성자가 아니면 403 (E-01)
 
@@ -130,6 +138,20 @@ Model 속성
 |---|---|---|---|
 | 리소스 없음 | NotFoundException | 404 | error/404 |
 | 권한 없음 (작성자 아님) | ForbiddenException | 403 | error/403 |
+| 첨부 용량 초과 (multipart 10MB) | MaxUploadSizeExceededException | 413 | error/413 |
 | 로그인 필요 | LoginCheckInterceptor | 302 → /login?redirectURL=... | S-03 |
 | DB 오류 | DataAccessException | 500 | error/500 (로그는 서버에 남김) |
 | 기타 서버 오류 | Exception | 500 | error/500 |
+
+------------------------------------------------------------
+
+### A-15 GET /posts/{postId}/files/{fileId} · A-16 GET /posts/{postId}/files/{fileId}/preview (F-10)
+- 로그인 필요 (비로그인 GET → /login?redirectURL=원래 주소)
+- 파일이 postId 글에 속하지 않거나 없으면 404
+응답 헤더
+| 헤더 | A-15 다운로드 | A-16 미리보기 |
+|---|---|---|
+| Content-Type | application/octet-stream | 확장자로 정한 image/* (jpg, jpeg, png, gif, webp) |
+| Content-Disposition | attachment; filename*=UTF-8''{원래 파일명} | inline; filename*=UTF-8''{원래 파일명} |
+| X-Content-Type-Options | nosniff | nosniff |
+- A-16 은 이미지가 아닌 파일이면 404

@@ -45,6 +45,15 @@ class LoginCheckInterceptorTest {
 	}
 
 	@Test
+	void F10_비로그인_첨부_다운로드와_미리보기는_로그인이_필요하다() throws Exception {
+		MockHttpServletResponse download = handle(new MockHttpServletRequest("GET", "/posts/3/files/7"), false);
+		MockHttpServletResponse preview = handle(new MockHttpServletRequest("GET", "/posts/3/files/7/preview"), false);
+
+		assertThat(download.getRedirectedUrl()).isEqualTo("/login?redirectURL=%2Fposts%2F3%2Ffiles%2F7");
+		assertThat(preview.getRedirectedUrl()).isEqualTo("/login?redirectURL=%2Fposts%2F3%2Ffiles%2F7%2Fpreview");
+	}
+
+	@Test
 	void F02_비로그인_POST는_redirectURL_없이_로그인으로_보낸다() throws Exception {
 		MockHttpServletResponse response = handle(new MockHttpServletRequest("POST", "/posts"), false);
 

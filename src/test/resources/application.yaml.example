@@ -4,11 +4,17 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/simpleboard_test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: root
-    password: adminuser
+    password: 여기에_비밀번호
   sql:
     init:
       mode: always          # 시작 시 schema.sql 실행 (CREATE TABLE IF NOT EXISTS)
+  servlet:
+    multipart:
+      max-file-size: 10MB     # 첨부 파일 1개 최대 10MB (F-10)
+      max-request-size: 11MB  # 파일 10MB + 제목/본문
 server:
+  tomcat:
+    max-swallow-size: 100MB   # 용량 초과 요청도 끝까지 읽어서 안내 페이지를 보여주기 위함
   servlet:
     session:
       timeout: 30m
@@ -16,3 +22,5 @@ server:
       cookie:
         http-only: true
         same-site: lax         # CSRF 완화 (Spring Security CSRF 토큰 대신)
+file:
+  upload-dir: ./build/test-uploads   # 테스트용 업로드 경로 (build 폴더라 git 제외)

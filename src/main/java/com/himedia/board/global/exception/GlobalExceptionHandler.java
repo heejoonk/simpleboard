@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Slf4j
 @ControllerAdvice
@@ -31,6 +32,13 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ForbiddenException.class)
 	public String handleForbidden(ForbiddenException e) {
 		return "error/403";
+	}
+
+	/** 첨부 파일이 multipart 용량 제한(10MB)을 넘으면 컨트롤러에 도달하기 전에 발생한다. (F-10) */
+	@ResponseStatus(HttpStatus.CONTENT_TOO_LARGE)
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public String handleMaxUploadSize(MaxUploadSizeExceededException e) {
+		return "error/413";
 	}
 
 	/**
